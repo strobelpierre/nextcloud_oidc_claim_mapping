@@ -2,7 +2,7 @@ services:
   nextcloud:
     image: nextcloud:32-apache
     ports:
-      - "8080:80"
+      - "8081:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:

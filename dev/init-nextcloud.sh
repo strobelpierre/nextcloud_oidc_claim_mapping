@@ -35,42 +35,48 @@ php occ user_oidc:provider nextcloud-keycloak \
 echo "Enabling oidc_claim_mapping..."
 php occ app:enable oidc_claim_mapping || true
 
-# Configure mapping rules — no prefixes, direct claim values as group names
-echo "Setting mapping rules..."
+# Configure sample rules — each rule MUST have `target` (M2 validation).
+# These sample rules demonstrate scalar-attribute overrides over the
+# user_oidc native mappings; the AttributeMappingListener that actually
+# applies them is wired in at M3.
+echo "Setting sample mapping rules..."
 php occ config:app:set oidc_claim_mapping mapping_rules --value='{
   "version": 1,
   "mode": "additive",
   "rules": [
     {
-      "id": "dept",
-      "type": "direct",
+      "id": "displayname-prefix",
+      "type": "prefix",
+      "target": "displayName",
+      "providerIdentifier": "*",
       "enabled": true,
-      "claimPath": "department",
-      "config": {}
-    },
-    {
-      "id": "roles",
-      "type": "direct",
-      "enabled": true,
-      "claimPath": "roles",
-      "config": {}
-    },
-    {
-      "id": "org",
-      "type": "direct",
-      "enabled": true,
-      "claimPath": "organization",
-      "config": {}
-    },
-    {
-      "id": "ext-check",
-      "type": "conditional",
-      "enabled": true,
-      "claimPath": "is_external",
+      "claimPath": "name",
       "config": {
-        "operator": "equals",
-        "value": "true",
-        "groups": ["External-Users"]
+        "prefix": "[DEV] "
+      }
+    },
+    {
+      "id": "email-direct",
+      "type": "direct",
+      "target": "email",
+      "providerIdentifier": "*",
+      "enabled": true,
+      "claimPath": "email",
+      "config": {}
+    },
+    {
+      "id": "country-from-locale",
+      "type": "map",
+      "target": "address",
+      "providerIdentifier": "*",
+      "enabled": true,
+      "claimPath": "locale",
+      "config": {
+        "map": {
+          "en-US": "United States",
+          "fr-FR": "France",
+          "de-DE": "Germany"
+        }
       }
     }
   ]
@@ -78,6 +84,6 @@ php occ config:app:set oidc_claim_mapping mapping_rules --value='{
 
 echo ""
 echo "=== Setup complete ==="
-echo "NC:  http://localhost:8080  (admin/admin)"
+echo "NC:  http://localhost:8081  (admin/admin)"
 echo "KC:  http://localhost:8999  (admin/admin)"
 echo "Test: Login via 'Log in with nextcloud-keycloak' using testuser1/password"
