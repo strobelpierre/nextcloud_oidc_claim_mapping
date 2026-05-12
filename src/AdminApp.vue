@@ -4,7 +4,7 @@
   -->
 
 <template>
-	<div class="oidc-groups-mapping-admin">
+	<div class="oidc-claim-mapping-admin">
 		<h2>OIDC Claim Mapping</h2>
 
 		<div class="tab-bar">
@@ -267,7 +267,7 @@ export default {
 </script>
 
 <style scoped>
-.oidc-groups-mapping-admin {
+.oidc-claim-mapping-admin {
 	padding: 20px;
 }
 

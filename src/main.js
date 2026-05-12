@@ -6,7 +6,7 @@
 import Vue from 'vue'
 import AdminApp from './AdminApp.vue'
 
-const mountEl = document.getElementById('oidc-groups-mapping-app')
+const mountEl = document.getElementById('oidc-claim-mapping-app')
 if (mountEl) {
 	new Vue({
 		el: mountEl,

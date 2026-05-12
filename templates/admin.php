@@ -4,4 +4,4 @@
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
 ?>
-<div id="oidc-groups-mapping-app"></div>
+<div id="oidc-claim-mapping-app"></div>
