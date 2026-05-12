@@ -1,0 +1,125 @@
+# SPDX-FileCopyrightText: 2026 OIDC Claim Mapping Contributors
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+name: Publish to Nextcloud App Store
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. v1.1.0)'
+        required: true
+        type: string
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    env:
+      APP_NAME: oidc_claim_mapping
+
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.release.tag_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.tag.outputs.tag }}
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          composer install --no-dev --prefer-dist --no-interaction
+          npm ci
+
+      - name: Build tarball
+        run: make appstore
+
+      - name: Sign app
+        run: |
+          # Write key and fetch certificate
+          echo "${{ secrets.APP_PRIVATE_KEY }}" > /tmp/app.key
+          curl -sL "https://github.com/nextcloud/app-certificate-requests/raw/master/${APP_NAME}/${APP_NAME}.crt" \
+            -o /tmp/app.crt
+
+          # Extract, sign, repackage
+          cd build/artifacts
+          tar xzf ${APP_NAME}.tar.gz
+          cd ${APP_NAME}
+
+          # Generate signature.json using PHP + openssl
+          php << 'PHPSIGN'
+          <?php
+          $appPath = getcwd();
+          $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($appPath, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::SELF_FIRST
+          );
+          $hashes = [];
+          foreach ($iterator as $file) {
+            if ($file->isFile()) {
+              $relPath = ltrim(str_replace($appPath, '', $file->getPathname()), '/');
+              if ($relPath === 'appinfo/signature.json') continue;
+              $hashes[$relPath] = ['sha512' => hash_file('sha512', $file->getPathname())];
+            }
+          }
+          ksort($hashes);
+          $privateKey = file_get_contents('/tmp/app.key');
+          openssl_sign(json_encode($hashes), $signature, $privateKey, OPENSSL_ALGO_SHA512);
+          $result = [
+            'hashes' => $hashes,
+            'signature' => base64_encode($signature),
+            'certificate' => file_get_contents('/tmp/app.crt'),
+          ];
+          file_put_contents('appinfo/signature.json', json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+          echo "Signed " . count($hashes) . " files\n";
+          PHPSIGN
+
+          cd ..
+          tar czf ${APP_NAME}.tar.gz ${APP_NAME}
+          rm -rf ${APP_NAME}
+
+          # Generate detached signature of the tarball for App Store API
+          openssl dgst -sha512 -sign /tmp/app.key ${APP_NAME}.tar.gz | openssl base64 -A > /tmp/tarball.sig
+
+      - name: Attach signed tarball to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          files: build/artifacts/${{ env.APP_NAME }}.tar.gz
+
+      - name: Publish to Nextcloud App Store
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${APP_NAME}.tar.gz"
+          SIGNATURE=$(cat /tmp/tarball.sig)
+          echo "Publishing ${DOWNLOAD_URL}"
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            -H "Authorization: Token ${{ secrets.APPSTORE_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"download\": \"${DOWNLOAD_URL}\", \"signature\": \"${SIGNATURE}\"}" \
+            https://apps.nextcloud.com/api/v1/apps/releases)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "Response (${HTTP_CODE}): ${BODY}"
+          [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]
