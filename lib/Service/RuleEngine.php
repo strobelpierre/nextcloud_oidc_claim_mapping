@@ -11,31 +11,47 @@ namespace OCA\OidcClaimMapping\Service;
 
 use OCA\OidcClaimMapping\Model\MappingResult;
 use OCA\OidcClaimMapping\Model\Rule;
+use Psr\Log\LoggerInterface;
+use Throwable;
 
 class RuleEngine {
 
 	public function __construct(
 		private ClaimResolver $resolver,
+		private MustacheRenderer $mustache,
+		private LoggerInterface $logger,
 	) {
 	}
 
 	public function apply(Rule $rule, object $claims): MappingResult {
-		$claimValue = $this->resolver->resolve($claims, $rule->getClaimPath());
+		try {
+			$claimValue = $this->resolver->resolve($claims, $rule->getClaimPath());
 
-		if ($claimValue === null) {
+			if ($claimValue === null) {
+				return new MappingResult($rule->getId(), [], false);
+			}
+
+			$groups = match ($rule->getType()) {
+				'direct' => $this->applyDirect($claimValue),
+				'prefix' => $this->applyPrefix($claimValue, $rule->getConfig()),
+				'map' => $this->applyMap($claimValue, $rule->getConfig()),
+				'conditional' => $this->applyConditional($claimValue, $rule->getConfig()),
+				'template' => $this->applyTemplate($claimValue, $claims, $rule->getConfig()),
+				default => [],
+			};
+
+			return new MappingResult($rule->getId(), $groups, count($groups) > 0);
+		} catch (Throwable $e) {
+			// Fail-open: a misbehaving rule MUST NOT block the login. We log
+			// the error and return an unmatched result so the caller (the
+			// listener or simulator) moves on to the next rule.
+			$this->logger->error('Rule {rule} threw while applying: {msg}', [
+				'rule' => $rule->getId(),
+				'msg' => $e->getMessage(),
+				'exception' => $e,
+			]);
 			return new MappingResult($rule->getId(), [], false);
 		}
-
-		$groups = match ($rule->getType()) {
-			'direct' => $this->applyDirect($claimValue),
-			'prefix' => $this->applyPrefix($claimValue, $rule->getConfig()),
-			'map' => $this->applyMap($claimValue, $rule->getConfig()),
-			'conditional' => $this->applyConditional($claimValue, $rule->getConfig()),
-			'template' => $this->applyTemplate($claimValue, $rule->getConfig()),
-			default => [],
-		};
-
-		return new MappingResult($rule->getId(), $groups, count($groups) > 0);
 	}
 
 	private function applyDirect(mixed $value): array {
@@ -100,16 +116,32 @@ class RuleEngine {
 		return $matched ? $groups : [];
 	}
 
-	private function applyTemplate(mixed $value, array $config): array {
-		$template = $config['template'] ?? '{value}';
+	/**
+	 * Render the rule template via Mustache. The template can reference
+	 * `{{value}}` (the claim value), or any field of the full claim object
+	 * via `{{claims.path.to.thing}}` and `{{#claims.flag}}...{{/claims.flag}}`
+	 * sections. Falls back gracefully when rendering fails: the rule is
+	 * treated as unmatched and a single error is logged via the surrounding
+	 * try/catch in `apply()`.
+	 */
+	private function applyTemplate(mixed $value, object $claims, array $config): array {
+		$template = $config['template'] ?? '{{value}}';
+		if (!is_string($template) || $template === '') {
+			return [];
+		}
+
 		$values = is_array($value) ? $value : [$value];
 
-		$groups = [];
+		$out = [];
 		foreach ($values as $v) {
-			if (is_string($v) && $v !== '') {
-				$groups[] = str_replace('{value}', $v, $template);
+			if (!is_string($v) || $v === '') {
+				continue;
+			}
+			$rendered = $this->mustache->render($template, $v, $claims);
+			if ($rendered !== null && $rendered !== '') {
+				$out[] = $rendered;
 			}
 		}
-		return $groups;
+		return $out;
 	}
 }

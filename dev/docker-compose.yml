@@ -20,6 +20,8 @@ services:
       - ../lib:/var/www/html/custom_apps/oidc_claim_mapping/lib:cached
       - ../templates:/var/www/html/custom_apps/oidc_claim_mapping/templates:cached
       - ../js:/var/www/html/custom_apps/oidc_claim_mapping/js:cached
+      - ../vendor:/var/www/html/custom_apps/oidc_claim_mapping/vendor:cached
+      - ../composer.json:/var/www/html/custom_apps/oidc_claim_mapping/composer.json:cached
       - ./init-nextcloud.sh:/init-nextcloud.sh:ro
     depends_on:
       - postgres

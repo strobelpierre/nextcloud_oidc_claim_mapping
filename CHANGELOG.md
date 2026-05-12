@@ -26,6 +26,15 @@ All notable changes to this project are documented in this file.
 - **M1** — Scaffold + rename (done)
 - **M2** — `TargetRegistry` + `Rule.target` field validation (done)
 - **M3** — `AttributeMappingListener` + `iss`-based provider scoping (done)
+- **M4** — Mustache renderer + cross-claim templates + fail-open runtime (done)
+
+### M4 additions
+
+- `Service\MustacheRenderer` — wraps `Mustache_Engine` with HTML escape disabled (we render into user attributes, not HTML). Exposes `render($template, $value, $claims)` (returns `null` on failure) and `validate($template)` (throws on syntax errors, used by the API at save time).
+- `Service\RuleEngine` — injects `MustacheRenderer` and a `LoggerInterface`. `applyTemplate()` now feeds `{value, claims}` into Mustache, so templates can use `{{value}}`, `{{claims.path.to.thing}}`, and Mustache sections like `{{#claims.flag}}...{{/claims.flag}}`. The whole `apply()` is wrapped in a try/catch that logs at error level and returns an unmatched `MappingResult` — a misbehaving rule cannot block the login.
+- `Controller\RulesApiController::update` — for any rule of type `template`, the template field is required and compiled via `MustacheRenderer::validate()` at save time. Syntax errors surface as HTTP 400 with the exception message, so admins get the diagnostic before the next login instead of a silent fail-open at runtime.
+- `lib/AppInfo/Application.php::__construct` now `require_once` the app-level `vendor/autoload.php` so Composer-managed dependencies (Mustache) resolve. NC does not auto-load third-party app vendor directories.
+- `composer.lock` updated by `composer update mustache/mustache`. `dev/docker-compose.yml` now bind-mounts `../vendor` and `../composer.json` into the container so the autoload runs against the host-side install.
 
 ### M3 additions
 

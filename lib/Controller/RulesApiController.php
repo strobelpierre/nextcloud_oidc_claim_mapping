@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace OCA\OidcClaimMapping\Controller;
 
 use OCA\OidcClaimMapping\Model\RuleCollection;
+use OCA\OidcClaimMapping\Service\MustacheRenderer;
 use OCA\OidcClaimMapping\Service\RuleEngine;
 use OCA\OidcClaimMapping\Service\TargetRegistry;
 use OCP\AppFramework\Http;
@@ -17,6 +18,7 @@ use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
 use OCP\IAppConfig;
 use OCP\IRequest;
+use Throwable;
 
 class RulesApiController extends OCSController {
 
@@ -25,6 +27,7 @@ class RulesApiController extends OCSController {
 		private IAppConfig $appConfig,
 		private RuleEngine $ruleEngine,
 		private TargetRegistry $targetRegistry,
+		private MustacheRenderer $mustache,
 	) {
 		parent::__construct('oidc_claim_mapping', $request);
 	}
@@ -80,6 +83,28 @@ class RulesApiController extends OCSController {
 					['message' => "Unknown target '{$target}'. Supported targets: {$supported}"],
 					Http::STATUS_BAD_REQUEST,
 				);
+			}
+
+			// Validate Mustache syntax for template rules at save time, so admins
+			// catch a typo before the next login instead of finding a silent
+			// fail-open in the journal. We compile the template; any syntax
+			// error throws and surfaces here as HTTP 400.
+			if (($ruleData['type'] ?? null) === 'template') {
+				$template = $ruleData['config']['template'] ?? null;
+				if (!is_string($template) || $template === '') {
+					return new DataResponse(
+						['message' => "Rule at index {$idx} is of type 'template' but is missing config.template (string)."],
+						Http::STATUS_BAD_REQUEST,
+					);
+				}
+				try {
+					$this->mustache->validate($template);
+				} catch (Throwable $e) {
+					return new DataResponse(
+						['message' => "Rule at index {$idx} has an invalid Mustache template: {$e->getMessage()}"],
+						Http::STATUS_BAD_REQUEST,
+					);
+				}
 			}
 		}
 

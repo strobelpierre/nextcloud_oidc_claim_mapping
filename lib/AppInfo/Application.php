@@ -22,6 +22,14 @@ class Application extends App implements IBootstrap {
 
 	public function __construct(array $urlParams = []) {
 		parent::__construct(self::APP_ID, $urlParams);
+
+		// Pull in Composer-managed dependencies (Mustache, etc.). NC does not
+		// auto-load app-level vendor autoload files in third-party apps; we
+		// load it explicitly here so the renderer + any future dep resolves.
+		$autoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
+		if (file_exists($autoload)) {
+			require_once $autoload;
+		}
 	}
 
 	public function register(IRegistrationContext $context): void {
