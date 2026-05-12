@@ -11,6 +11,7 @@ namespace OCA\OidcClaimMapping\Controller;
 
 use OCA\OidcClaimMapping\Model\RuleCollection;
 use OCA\OidcClaimMapping\Service\RuleEngine;
+use OCA\OidcClaimMapping\Service\TargetRegistry;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
@@ -23,6 +24,7 @@ class RulesApiController extends OCSController {
 		IRequest $request,
 		private IAppConfig $appConfig,
 		private RuleEngine $ruleEngine,
+		private TargetRegistry $targetRegistry,
 	) {
 		parent::__construct('oidc_claim_mapping', $request);
 	}
@@ -51,6 +53,34 @@ class RulesApiController extends OCSController {
 				['message' => 'Invalid JSON'],
 				Http::STATUS_BAD_REQUEST,
 			);
+		}
+
+		// Validate every rule's `target` against the TargetRegistry BEFORE
+		// handing the payload to RuleCollection::fromJson(), which silently
+		// drops rules that fail Rule::fromArray() validation. Surfacing the
+		// rejection here gives the admin a clear HTTP 400 with a diagnostic
+		// message instead of a "rule disappeared" mystery on the next read.
+		foreach ($decoded['rules'] ?? [] as $idx => $ruleData) {
+			$target = $ruleData['target'] ?? null;
+			if (!is_string($target) || $target === '') {
+				return new DataResponse(
+					['message' => "Rule at index {$idx} is missing the required string field 'target'."],
+					Http::STATUS_BAD_REQUEST,
+				);
+			}
+			if ($this->targetRegistry->isForbidden($target)) {
+				return new DataResponse(
+					['message' => "target='{$target}' is not allowed here. Group mapping lives in the companion oidc_groups_mapping app."],
+					Http::STATUS_BAD_REQUEST,
+				);
+			}
+			if (!$this->targetRegistry->isSupported($target)) {
+				$supported = implode(', ', $this->targetRegistry->getSupportedTargets());
+				return new DataResponse(
+					['message' => "Unknown target '{$target}'. Supported targets: {$supported}"],
+					Http::STATUS_BAD_REQUEST,
+				);
+			}
 		}
 
 		$collection = RuleCollection::fromJson($rules);

@@ -13,11 +13,15 @@ class Rule {
 
 	private const VALID_TYPES = ['direct', 'prefix', 'map', 'conditional', 'template'];
 
+	public const PROVIDER_ANY = '*';
+
 	private function __construct(
 		private string $id,
 		private string $type,
 		private bool $enabled,
 		private string $claimPath,
+		private string $target,
+		private string $providerIdentifier,
 		private array $config,
 	) {
 	}
@@ -32,12 +36,22 @@ class Rule {
 		if (!isset($data['claimPath']) || !is_string($data['claimPath'])) {
 			throw new \InvalidArgumentException('Rule must have a string "claimPath"');
 		}
+		if (!isset($data['target']) || !is_string($data['target']) || $data['target'] === '') {
+			throw new \InvalidArgumentException('Rule must have a non-empty string "target"');
+		}
+
+		$providerIdentifier = $data['providerIdentifier'] ?? self::PROVIDER_ANY;
+		if (!is_string($providerIdentifier) || $providerIdentifier === '') {
+			throw new \InvalidArgumentException('Rule "providerIdentifier" must be a non-empty string');
+		}
 
 		return new self(
 			$data['id'],
 			$data['type'],
 			$data['enabled'] ?? true,
 			$data['claimPath'],
+			$data['target'],
+			$providerIdentifier,
 			$data['config'] ?? [],
 		);
 	}
@@ -58,6 +72,19 @@ class Rule {
 		return $this->claimPath;
 	}
 
+	public function getTarget(): string {
+		return $this->target;
+	}
+
+	public function getProviderIdentifier(): string {
+		return $this->providerIdentifier;
+	}
+
+	public function appliesToProvider(string $providerIdentifier): bool {
+		return $this->providerIdentifier === self::PROVIDER_ANY
+			|| $this->providerIdentifier === $providerIdentifier;
+	}
+
 	public function getConfig(): array {
 		return $this->config;
 	}
@@ -68,6 +95,8 @@ class Rule {
 			'type' => $this->type,
 			'enabled' => $this->enabled,
 			'claimPath' => $this->claimPath,
+			'target' => $this->target,
+			'providerIdentifier' => $this->providerIdentifier,
 			'config' => $this->config,
 		];
 	}
