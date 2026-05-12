@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\OidcClaimMapping\AppInfo;
 
-use OCA\OidcClaimMapping\Listener\GroupsMappingListener;
+use OCA\OidcClaimMapping\Listener\AttributeMappingListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -29,7 +29,7 @@ class Application extends App implements IBootstrap {
 		// NC will only resolve the class when the event is actually dispatched.
 		$context->registerEventListener(
 			'OCA\\UserOIDC\\Event\\AttributeMappedEvent',
-			GroupsMappingListener::class,
+			AttributeMappingListener::class,
 		);
 	}
 
@@ -37,7 +37,7 @@ class Application extends App implements IBootstrap {
 		$appManager = $context->getServerContainer()->get(\OCP\App\IAppManager::class);
 		if (!$appManager->isEnabledForUser('user_oidc')) {
 			$context->getServerContainer()->get(LoggerInterface::class)->warning(
-				'oidc_claim_mapping requires user_oidc to be enabled. Group mapping will not work.'
+				'oidc_claim_mapping requires user_oidc to be enabled. Claim mapping will not run.'
 			);
 		}
 	}

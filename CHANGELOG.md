@@ -25,6 +25,14 @@ All notable changes to this project are documented in this file.
 
 - **M1** — Scaffold + rename (done)
 - **M2** — `TargetRegistry` + `Rule.target` field validation (done)
+- **M3** — `AttributeMappingListener` + `iss`-based provider scoping (done)
+
+### M3 additions
+
+- `Service\ProviderResolver` — resolves the `iss` token claim to a `user_oidc` provider identifier. Matches by URL path between the iss and each provider's `discoveryEndpoint` (handles dev/prod hostname splits where the IdP is reachable on a public hostname for end users and on an internal hostname for the NC backend).
+- `Listener\AttributeMappingListener` — replaces the deprecated `GroupsMappingListener`. For each `AttributeMappedEvent`, it decodes the event attribute into a canonical target via `TargetRegistry`, resolves the provider, filters enabled rules by `target` + `providerIdentifier` match, applies them first-match-wins, and on the first match calls `setValue()` + `stopPropagation()`. Logs at debug level per rule applied (rule id, target, value, provider).
+- `lib/AppInfo/Application.php` now registers `AttributeMappingListener` on `AttributeMappedEvent`. The old `GroupsMappingListener` and its unit test are removed.
+- `Service\MappingService` and `Command\TestMapping` are left intact — they are not on the login path; their refactor moves to M4 alongside the `MappingResult` → scalar-value migration.
 - **M3** — `AttributeMappingListener` + `iss`-based provider scoping
 - **M4** — Full Mustache renderer with cross-claim templates
 - **M5** — Frontend Vue: target dropdown, provider dropdown, accordion grouping by target, preset browser
