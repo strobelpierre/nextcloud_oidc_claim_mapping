@@ -27,7 +27,11 @@ All notable changes to this project are documented in this file.
 - **M2** — `TargetRegistry` + `Rule.target` field validation (done)
 - **M3** — `AttributeMappingListener` + `iss`-based provider scoping (done)
 - **M4** — Mustache renderer + cross-claim templates + fail-open runtime (done)
-- **M5** — Frontend Vue: target dropdown + provider dropdown + RuleCard chips (phase 1 done)
+- **M5** — Frontend Vue: target dropdown + provider dropdown + RuleCard chips + accordion grouping by target (phase 1 + 2 done)
+
+### M5 phase 2 additions
+
+- `src/components/RuleList.vue` now groups rules by `target` inside collapsible `<details>` accordions. Each group shows the target name + rule count. The first group is open by default; the `(no target)` bucket (legacy rules from before M2) is pushed to the bottom so admins notice it. Original rule indices are preserved through the grouping so toggle/delete/edit/reorder events still address the canonical flat list.
 
 ### M5 phase 1 additions
 
