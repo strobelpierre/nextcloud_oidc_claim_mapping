@@ -9,8 +9,14 @@
 		draggable="true">
 		<div class="rule-header">
 			<span class="drag-handle" title="Drag to reorder">&#9776;</span>
+			<span v-if="rule.target" class="rule-target badge" :title="`Target attribute: ${rule.target}`">
+				{{ rule.target }}
+			</span>
 			<span class="rule-type badge">{{ rule.type }}</span>
 			<span class="rule-claim">{{ rule.claimPath }}</span>
+			<span v-if="providerLabel" class="rule-provider badge" :title="`Provider scope: ${rule.providerIdentifier}`">
+				{{ providerLabel }}
+			</span>
 			<span v-if="!rule.enabled" class="badge badge-disabled">disabled</span>
 			<div class="rule-actions">
 				<button class="action-btn" :title="rule.enabled ? 'Disable' : 'Enable'" @click="$emit('toggle')">
@@ -52,11 +58,18 @@ export default {
 		},
 	},
 	computed: {
+		providerLabel() {
+			const id = this.rule.providerIdentifier
+			if (!id || id === '*') {
+				return ''
+			}
+			return id
+		},
 		summary() {
 			const config = this.rule.config || {}
 			switch (this.rule.type) {
 			case 'direct':
-				return 'Maps claim values directly as group names'
+				return `Writes the claim value directly into the ${this.rule.target || 'target'} attribute`
 			case 'prefix':
 				return `Adds prefix '${config.prefix || ''}' to claim values`
 			case 'map': {
@@ -128,9 +141,19 @@ export default {
 	cursor: grabbing;
 }
 
+.rule-target {
+	background-color: var(--color-success);
+	color: var(--color-primary-element-text, white);
+}
+
 .rule-type {
 	background-color: var(--color-primary-element-light);
 	color: var(--color-primary-element-light-text, var(--color-primary-element));
+}
+
+.rule-provider {
+	background-color: var(--color-warning);
+	color: var(--color-main-text);
 }
 
 .rule-claim {

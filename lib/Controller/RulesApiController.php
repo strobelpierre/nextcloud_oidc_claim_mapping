@@ -13,6 +13,7 @@ use OCA\OidcClaimMapping\Model\RuleCollection;
 use OCA\OidcClaimMapping\Service\MustacheRenderer;
 use OCA\OidcClaimMapping\Service\RuleEngine;
 use OCA\OidcClaimMapping\Service\TargetRegistry;
+use OCA\UserOIDC\Db\ProviderMapper;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataResponse;
 use OCP\AppFramework\OCSController;
@@ -28,8 +29,44 @@ class RulesApiController extends OCSController {
 		private RuleEngine $ruleEngine,
 		private TargetRegistry $targetRegistry,
 		private MustacheRenderer $mustache,
+		private ProviderMapper $providerMapper,
 	) {
 		parent::__construct('oidc_claim_mapping', $request);
+	}
+
+	/**
+	 * List the canonical scalar target attributes accepted by this app.
+	 * Used by the admin UI to populate the "Target attribute" dropdown.
+	 */
+	public function targets(): DataResponse {
+		return new DataResponse([
+			'targets' => $this->targetRegistry->getSupportedTargets(),
+		]);
+	}
+
+	/**
+	 * List the configured user_oidc providers so the admin UI can scope a
+	 * rule to a specific provider via the `iss` claim. The wildcard `*`
+	 * (any provider) is implicit and offered by the UI itself.
+	 */
+	public function providers(): DataResponse {
+		try {
+			$providers = $this->providerMapper->getProviders();
+		} catch (Throwable $e) {
+			return new DataResponse([
+				'providers' => [],
+				'error' => 'Failed to enumerate user_oidc providers: ' . $e->getMessage(),
+			]);
+		}
+		return new DataResponse([
+			'providers' => array_map(
+				fn ($p) => [
+					'identifier' => $p->getIdentifier(),
+					'discoveryEndpoint' => $p->getDiscoveryEndpoint(),
+				],
+				$providers,
+			),
+		]);
 	}
 
 	/**

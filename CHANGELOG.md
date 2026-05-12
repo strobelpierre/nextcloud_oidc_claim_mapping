@@ -27,6 +27,29 @@ All notable changes to this project are documented in this file.
 - **M2** — `TargetRegistry` + `Rule.target` field validation (done)
 - **M3** — `AttributeMappingListener` + `iss`-based provider scoping (done)
 - **M4** — Mustache renderer + cross-claim templates + fail-open runtime (done)
+- **M5** — Frontend Vue: target dropdown + provider dropdown + RuleCard chips (phase 1 done)
+
+### M5 phase 1 additions
+
+- Backend OCS endpoints:
+  - `GET /apps/oidc_claim_mapping/api/v1/targets` — exposes `TargetRegistry::getSupportedTargets()` to the admin UI.
+  - `GET /apps/oidc_claim_mapping/api/v1/providers` — list configured user_oidc providers (identifier + discoveryEndpoint), so the editor can scope a rule to one.
+- `Controller\RulesApiController` now takes `ProviderMapper` as an extra dependency to back the `providers()` endpoint.
+- `src/components/RuleEditor.vue`:
+  - Required "Target attribute" dropdown at the top, populated from `/api/v1/targets`. The Add/Update button is disabled until a target is selected.
+  - "Provider scope" dropdown with `* (any provider)` plus every provider returned by `/api/v1/providers`.
+  - Template field placeholder + hints rewritten for Mustache syntax (`{{value}}`, `{{claims.path.to.thing}}`, sections). Mustache example strings declared in a computed property to escape Vue's double-braces parser.
+  - Targets and providers fetched in `mounted()` via `@nextcloud/axios` + `@nextcloud/router#generateOcsUrl`.
+- `src/components/RuleCard.vue`:
+  - Green chip showing the rule's target attribute.
+  - Orange chip showing the provider identifier when it's not `*`.
+  - Summary text updated to mention the target rather than "groups".
+
+### M5 deferred to phase 2
+
+- Accordion grouping by target in `RuleList.vue`.
+- `ClaimSimulator.vue` enriched view.
+- `PresetBrowser.vue` fetching community presets from raw.githubusercontent.com.
 
 ### M4 additions
 

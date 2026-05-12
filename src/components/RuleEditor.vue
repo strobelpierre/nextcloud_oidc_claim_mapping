@@ -8,6 +8,34 @@
 		<h3>{{ isNew ? 'Add rule' : 'Edit rule' }}</h3>
 
 		<div class="form-row">
+			<label for="rule-target">Target attribute <span class="required">*</span></label>
+			<select id="rule-target" v-model="local.target">
+				<option value="" disabled>Choose a target…</option>
+				<option v-for="t in availableTargets" :key="t" :value="t">{{ t }}</option>
+			</select>
+			<p class="form-hint">
+				The Nextcloud user attribute this rule writes into. Mirrored from user_oidc 7.4 scalar mappings.
+				Group mapping lives in the companion <code>oidc_groups_mapping</code> app.
+			</p>
+		</div>
+
+		<div class="form-row">
+			<label for="rule-provider">Provider scope</label>
+			<select id="rule-provider" v-model="local.providerIdentifier">
+				<option value="*">* (any provider)</option>
+				<option v-for="p in availableProviders"
+					:key="p.identifier"
+					:value="p.identifier">
+					{{ p.identifier }}
+				</option>
+			</select>
+			<p class="form-hint">
+				Restrict this rule to a single user_oidc provider (matched via the <code>iss</code> token claim),
+				or <code>*</code> to apply on every provider.
+			</p>
+		</div>
+
+		<div class="form-row">
 			<label for="rule-type">Type</label>
 			<select id="rule-type" v-model="local.type" @change="onTypeChange">
 				<option value="direct">direct</option>
@@ -23,7 +51,7 @@
 			<input id="rule-claim"
 				v-model="local.claimPath"
 				type="text"
-				placeholder="e.g. roles, department, extended_attrs.groups" />
+				placeholder="e.g. name, email, extended_attrs.country" />
 		</div>
 
 		<div class="form-row">
@@ -98,15 +126,20 @@
 
 		<!-- template -->
 		<div v-if="local.type === 'template'" class="form-row">
-			<label for="cfg-template">Template</label>
+			<label for="cfg-template">Template <span class="form-hint-inline">(Mustache)</span></label>
 			<input id="cfg-template"
 				v-model="local.config.template"
 				type="text"
-				placeholder="e.g. dept_{value}" />
+				:placeholder="templatePlaceholder" />
+			<p class="form-hint">
+				<code v-text="ex.value" /> renders the claim value.
+				<code v-text="ex.claim" /> reads any other claim.
+				Sections like <code v-text="ex.section" /> are supported.
+			</p>
 		</div>
 
 		<div class="editor-actions">
-			<button class="primary" :disabled="!local.claimPath" @click="onSubmit">
+			<button class="primary" :disabled="!canSubmit" @click="onSubmit">
 				{{ isNew ? 'Add' : 'Update' }}
 			</button>
 			<button @click="$emit('cancel')">
@@ -117,6 +150,9 @@
 </template>
 
 <script>
+import axios from '@nextcloud/axios'
+import { generateOcsUrl } from '@nextcloud/router'
+
 export default {
 	name: 'RuleEditor',
 	props: {
@@ -130,21 +166,77 @@ export default {
 		},
 	},
 	data() {
+		const seed = JSON.parse(JSON.stringify(this.rule))
+		// Backwards-compat: rules created before M2 (or from a CLI dump)
+		// may miss `target` / `providerIdentifier`. Default in-editor so
+		// the user can fill them before the save round-trip.
+		if (!seed.target) {
+			seed.target = ''
+		}
+		if (!seed.providerIdentifier) {
+			seed.providerIdentifier = '*'
+		}
 		return {
-			local: JSON.parse(JSON.stringify(this.rule)),
+			local: seed,
 			newMappingKey: '',
 			newMappingValue: '',
+			availableTargets: [],
+			availableProviders: [],
 		}
+	},
+	computed: {
+		canSubmit() {
+			return !!this.local.target && !!this.local.claimPath
+		},
+		ex() {
+			// Mustache example strings — declared in JS to avoid Vue's
+			// double-braces parser confusing them with template bindings.
+			return {
+				value: '{{value}}',
+				claim: '{{claims.path.to.thing}}',
+				section: '{{#claims.flag}}…{{/claims.flag}}',
+			}
+		},
+		templatePlaceholder() {
+			return 'e.g. {{value}} ({{claims.country}})'
+		},
 	},
 	watch: {
 		rule: {
 			handler(val) {
-				this.local = JSON.parse(JSON.stringify(val))
+				const seed = JSON.parse(JSON.stringify(val))
+				if (!seed.target) seed.target = ''
+				if (!seed.providerIdentifier) seed.providerIdentifier = '*'
+				this.local = seed
 			},
 			deep: true,
 		},
 	},
+	async mounted() {
+		await Promise.all([
+			this.fetchTargets(),
+			this.fetchProviders(),
+		])
+	},
 	methods: {
+		async fetchTargets() {
+			try {
+				const res = await axios.get(generateOcsUrl('apps/oidc_claim_mapping/api/v1/targets'))
+				this.availableTargets = res.data?.ocs?.data?.targets || []
+			} catch (e) {
+				console.error('[oidc_claim_mapping] Failed to fetch targets', e)
+				this.availableTargets = []
+			}
+		},
+		async fetchProviders() {
+			try {
+				const res = await axios.get(generateOcsUrl('apps/oidc_claim_mapping/api/v1/providers'))
+				this.availableProviders = res.data?.ocs?.data?.providers || []
+			} catch (e) {
+				console.error('[oidc_claim_mapping] Failed to fetch providers', e)
+				this.availableProviders = []
+			}
+		},
 		onTypeChange() {
 			// Reset config to defaults for the new type
 			const defaults = {
@@ -152,7 +244,7 @@ export default {
 				prefix: { prefix: '' },
 				map: { values: {}, unmappedPolicy: 'ignore' },
 				conditional: { operator: 'equals', value: '', groups: [] },
-				template: { template: '{value}' },
+				template: { template: '{{value}}' },
 			}
 			this.local.config = defaults[this.local.type] || {}
 		},
@@ -203,6 +295,34 @@ export default {
 	font-weight: 600;
 	font-size: 13px;
 	margin-bottom: 4px;
+}
+
+.form-hint {
+	margin-top: 4px;
+	margin-bottom: 0;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	max-width: 600px;
+}
+
+.form-hint-inline {
+	font-weight: 400;
+	font-size: 12px;
+	color: var(--color-text-maxcontrast);
+	margin-left: 6px;
+}
+
+.form-hint code,
+.form-row code {
+	font-family: var(--font-monospace, monospace);
+	background: var(--color-background-dark);
+	padding: 1px 4px;
+	border-radius: 3px;
+	font-size: 11px;
+}
+
+.required {
+	color: var(--color-error);
 }
 
 .form-row input[type="text"],
