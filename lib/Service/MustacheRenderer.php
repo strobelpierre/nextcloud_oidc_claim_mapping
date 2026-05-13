@@ -47,7 +47,7 @@ class MustacheRenderer {
 	 * Render a template. Returns null on failure (caller decides whether to
 	 * skip the rule, log, or fall through).
 	 *
-	 * @param mixed $value   The value at the rule's claimPath.
+	 * @param mixed $value The value at the rule's claimPath.
 	 * @param object|array $claims The full claim object/array.
 	 */
 	public function render(string $template, mixed $value, object|array $claims): ?string {

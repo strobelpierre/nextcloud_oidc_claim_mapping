@@ -10,3 +10,5 @@
 *.csr
 *.crt
 tests/.phpunit.cache/
+/vendor-bin/
+.php-cs-fixer.cache
