@@ -20,6 +20,7 @@ class RuleTest extends TestCase {
 			'type' => 'direct',
 			'enabled' => true,
 			'claimPath' => 'department',
+			'target' => 'displayName',
 			'config' => [],
 		]);
 
@@ -27,6 +28,8 @@ class RuleTest extends TestCase {
 		$this->assertSame('direct', $rule->getType());
 		$this->assertTrue($rule->isEnabled());
 		$this->assertSame('department', $rule->getClaimPath());
+		$this->assertSame('displayName', $rule->getTarget());
+		$this->assertSame(Rule::PROVIDER_ANY, $rule->getProviderIdentifier());
 		$this->assertSame([], $rule->getConfig());
 	}
 
@@ -36,6 +39,7 @@ class RuleTest extends TestCase {
 			'type' => 'prefix',
 			'enabled' => true,
 			'claimPath' => 'roles',
+			'target' => 'displayName',
 			'config' => ['prefix' => 'role_'],
 		]);
 
@@ -49,6 +53,7 @@ class RuleTest extends TestCase {
 			'type' => 'map',
 			'enabled' => true,
 			'claimPath' => 'domain',
+			'target' => 'organisation',
 			'config' => [
 				'values' => ['example.com' => 'Staff'],
 				'unmappedPolicy' => 'ignore',
@@ -64,6 +69,7 @@ class RuleTest extends TestCase {
 			'type' => 'conditional',
 			'enabled' => true,
 			'claimPath' => 'userType',
+			'target' => 'role',
 			'config' => [
 				'operator' => 'equals',
 				'value' => 'EXTERNAL',
@@ -80,10 +86,43 @@ class RuleTest extends TestCase {
 			'type' => 'template',
 			'enabled' => true,
 			'claimPath' => 'department',
-			'config' => ['template' => 'dept_{value}'],
+			'target' => 'headline',
+			'config' => ['template' => 'dept_{{value}}'],
 		]);
 
 		$this->assertSame('template', $rule->getType());
+	}
+
+	public function testProviderIdentifierExplicit(): void {
+		$rule = Rule::fromArray([
+			'id' => 'scoped',
+			'type' => 'direct',
+			'enabled' => true,
+			'claimPath' => 'name',
+			'target' => 'displayName',
+			'providerIdentifier' => 'eu-login-prod',
+			'config' => [],
+		]);
+
+		$this->assertSame('eu-login-prod', $rule->getProviderIdentifier());
+		$this->assertTrue($rule->appliesToProvider('eu-login-prod'));
+		$this->assertFalse($rule->appliesToProvider('keycloak-dev'));
+		$this->assertFalse($rule->appliesToProvider(Rule::PROVIDER_ANY));
+	}
+
+	public function testProviderIdentifierWildcardAppliesEverywhere(): void {
+		$rule = Rule::fromArray([
+			'id' => 'wild',
+			'type' => 'direct',
+			'enabled' => true,
+			'claimPath' => 'name',
+			'target' => 'displayName',
+			'providerIdentifier' => Rule::PROVIDER_ANY,
+			'config' => [],
+		]);
+
+		$this->assertTrue($rule->appliesToProvider('any-id'));
+		$this->assertTrue($rule->appliesToProvider(Rule::PROVIDER_ANY));
 	}
 
 	public function testUnknownTypeThrowsException(): void {
@@ -95,6 +134,7 @@ class RuleTest extends TestCase {
 			'type' => 'unknown_type',
 			'enabled' => true,
 			'claimPath' => 'foo',
+			'target' => 'displayName',
 			'config' => [],
 		]);
 	}
@@ -106,6 +146,7 @@ class RuleTest extends TestCase {
 			'type' => 'direct',
 			'enabled' => true,
 			'claimPath' => 'foo',
+			'target' => 'displayName',
 			'config' => [],
 		]);
 	}
@@ -117,6 +158,33 @@ class RuleTest extends TestCase {
 			'id' => 'test',
 			'type' => 'direct',
 			'enabled' => true,
+			'target' => 'displayName',
+			'config' => [],
+		]);
+	}
+
+	public function testMissingTargetThrowsException(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('target');
+
+		Rule::fromArray([
+			'id' => 'test',
+			'type' => 'direct',
+			'enabled' => true,
+			'claimPath' => 'name',
+			'config' => [],
+		]);
+	}
+
+	public function testEmptyTargetThrowsException(): void {
+		$this->expectException(\InvalidArgumentException::class);
+
+		Rule::fromArray([
+			'id' => 'test',
+			'type' => 'direct',
+			'enabled' => true,
+			'claimPath' => 'name',
+			'target' => '',
 			'config' => [],
 		]);
 	}
@@ -127,6 +195,7 @@ class RuleTest extends TestCase {
 			'type' => 'direct',
 			'enabled' => false,
 			'claimPath' => 'department',
+			'target' => 'displayName',
 			'config' => [],
 		]);
 
@@ -138,18 +207,21 @@ class RuleTest extends TestCase {
 			'id' => 'default-enabled',
 			'type' => 'direct',
 			'claimPath' => 'department',
+			'target' => 'displayName',
 			'config' => [],
 		]);
 
 		$this->assertTrue($rule->isEnabled());
 	}
 
-	public function testToArray(): void {
+	public function testToArrayRoundTrip(): void {
 		$data = [
 			'id' => 'test',
 			'type' => 'direct',
 			'enabled' => true,
 			'claimPath' => 'department',
+			'target' => 'displayName',
+			'providerIdentifier' => Rule::PROVIDER_ANY,
 			'config' => [],
 		];
 		$rule = Rule::fromArray($data);

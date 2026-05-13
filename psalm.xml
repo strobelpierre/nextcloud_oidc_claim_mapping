@@ -33,6 +33,8 @@
         <UndefinedClass>
             <errorLevel type="suppress">
                 <referencedClass name="OCA\UserOIDC\Event\AttributeMappedEvent"/>
+                <referencedClass name="OCA\UserOIDC\Db\ProviderMapper"/>
+                <referencedClass name="OCA\UserOIDC\Db\Provider"/>
             </errorLevel>
         </UndefinedClass>
         <!-- #[\Override] requires PHP 8.3+ but we support 8.1+ -->

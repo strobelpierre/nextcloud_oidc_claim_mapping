@@ -9,3 +9,4 @@
 *.key
 *.csr
 *.crt
+tests/.phpunit.cache/

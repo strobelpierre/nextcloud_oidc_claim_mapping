@@ -11,10 +11,12 @@ namespace OCA\OidcClaimMapping\Tests\Unit\Service;
 
 use OCA\OidcClaimMapping\Service\ClaimResolver;
 use OCA\OidcClaimMapping\Service\MappingService;
+use OCA\OidcClaimMapping\Service\MustacheRenderer;
 use OCA\OidcClaimMapping\Service\RuleEngine;
 use OCP\IAppConfig;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 class MappingServiceTest extends TestCase {
 
@@ -26,7 +28,7 @@ class MappingServiceTest extends TestCase {
 		$this->appConfig = $this->createMock(IAppConfig::class);
 		$this->logger = $this->createMock(LoggerInterface::class);
 		$resolver = new ClaimResolver();
-		$engine = new RuleEngine($resolver);
+		$engine = new RuleEngine($resolver, new MustacheRenderer(), new NullLogger());
 
 		$this->service = new MappingService($this->appConfig, $engine, $this->logger);
 	}
@@ -42,7 +44,7 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'additive',
 			'rules' => [
-				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'department', 'config' => []],
+				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'department', 'target' => 'displayName', 'config' => []],
 			],
 		]));
 
@@ -61,7 +63,7 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'replace',
 			'rules' => [
-				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'department', 'config' => []],
+				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'department', 'target' => 'displayName', 'config' => []],
 			],
 		]));
 
@@ -80,7 +82,7 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'replace',
 			'rules' => [
-				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'missing_claim', 'config' => []],
+				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'missing_claim', 'target' => 'displayName', 'config' => []],
 			],
 		]));
 
@@ -106,7 +108,7 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'additive',
 			'rules' => [
-				['id' => 'dept', 'type' => 'direct', 'enabled' => false, 'claimPath' => 'department', 'config' => []],
+				['id' => 'dept', 'type' => 'direct', 'enabled' => false, 'claimPath' => 'department', 'target' => 'displayName', 'config' => []],
 			],
 		]));
 
@@ -120,8 +122,8 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'additive',
 			'rules' => [
-				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'department', 'config' => []],
-				['id' => 'roles', 'type' => 'prefix', 'enabled' => false, 'claimPath' => 'roles', 'config' => ['prefix' => 'role_']],
+				['id' => 'dept', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'department', 'target' => 'displayName', 'config' => []],
+				['id' => 'roles', 'type' => 'prefix', 'enabled' => false, 'claimPath' => 'roles', 'target' => 'displayName', 'config' => ['prefix' => 'role_']],
 			],
 		]));
 
@@ -137,8 +139,8 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'additive',
 			'rules' => [
-				['id' => 'rule1', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'groups1', 'config' => []],
-				['id' => 'rule2', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'groups2', 'config' => []],
+				['id' => 'rule1', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'groups1', 'target' => 'displayName', 'config' => []],
+				['id' => 'rule2', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'groups2', 'target' => 'displayName', 'config' => []],
 			],
 		]));
 
@@ -165,8 +167,8 @@ class MappingServiceTest extends TestCase {
 			'version' => 1,
 			'mode' => 'additive',
 			'rules' => [
-				['id' => 'dept', 'type' => 'template', 'enabled' => true, 'claimPath' => 'department', 'config' => ['template' => 'dept_{value}']],
-				['id' => 'roles', 'type' => 'prefix', 'enabled' => true, 'claimPath' => 'roles', 'config' => ['prefix' => 'role_']],
+				['id' => 'dept', 'type' => 'template', 'enabled' => true, 'claimPath' => 'department', 'target' => 'displayName', 'config' => ['template' => 'dept_{{value}}']],
+				['id' => 'roles', 'type' => 'prefix', 'enabled' => true, 'claimPath' => 'roles', 'target' => 'displayName', 'config' => ['prefix' => 'role_']],
 			],
 		]));
 

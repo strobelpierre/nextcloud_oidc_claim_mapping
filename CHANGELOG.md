@@ -28,6 +28,23 @@ All notable changes to this project are documented in this file.
 - **M3** — `AttributeMappingListener` + `iss`-based provider scoping (done)
 - **M4** — Mustache renderer + cross-claim templates + fail-open runtime (done)
 - **M5** — Frontend Vue: target dropdown + provider dropdown + RuleCard chips + accordion grouping by target (phase 1 + 2 done)
+- **M6** — Tests + CI (phpunit + psalm green) (done)
+
+### M6 additions
+
+- Existing test suites adapted to M2-M4:
+  - `tests/Unit/Model/RuleTest.php` — `target` field required; new cases for `appliesToProvider()` wildcard / explicit / mismatch and for empty/missing target rejection.
+  - `tests/Unit/Service/RuleEngineTest.php` — new constructor signature (`MustacheRenderer` + `LoggerInterface`); fixtures carry `target`; template strings switched to Mustache (`{{value}}`); added cross-claim + section tests.
+  - `tests/Unit/Controller/RulesApiControllerTest.php` — new constructor signature (`TargetRegistry`, `MustacheRenderer`, `ProviderMapper`); covers `target` validation, forbidden `groups`, unknown target, invalid Mustache template, `/api/v1/targets`, `/api/v1/providers` (success + exception path).
+  - `tests/Unit/Service/MappingServiceTest.php` and `tests/Unit/Model/RuleCollectionTest.php` — `target` filled in every fixture.
+- New unit-test files:
+  - `tests/Unit/Service/TargetRegistryTest.php`
+  - `tests/Unit/Service/MustacheRendererTest.php`
+  - `tests/Unit/Service/ProviderResolverTest.php`
+  - `tests/Unit/Listener/AttributeMappingListenerTest.php`
+- New test stubs under `tests/stubs/OCA/UserOIDC/Db/`: `Provider`, `ProviderMapper`. Both shadow the public surface used by `ProviderResolver` and `RulesApiController::providers`.
+- `psalm.xml` updated to suppress `UndefinedClass` for the user_oidc DB classes (only available at runtime through user_oidc, not analysis time).
+- Status: **122 tests, 269 assertions, all green**. Psalm: **0 errors** at the project level (6 info-level notes left, mostly Nextcloud-specific patterns).
 
 ### M5 phase 2 additions
 

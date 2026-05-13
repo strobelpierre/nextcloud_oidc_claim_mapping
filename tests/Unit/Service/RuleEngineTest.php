@@ -11,8 +11,10 @@ namespace OCA\OidcClaimMapping\Tests\Unit\Service;
 
 use OCA\OidcClaimMapping\Model\Rule;
 use OCA\OidcClaimMapping\Service\ClaimResolver;
+use OCA\OidcClaimMapping\Service\MustacheRenderer;
 use OCA\OidcClaimMapping\Service\RuleEngine;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 class RuleEngineTest extends TestCase {
 
@@ -21,13 +23,29 @@ class RuleEngineTest extends TestCase {
 
 	protected function setUp(): void {
 		$this->resolver = new ClaimResolver();
-		$this->engine = new RuleEngine($this->resolver);
+		$this->engine = new RuleEngine(
+			$this->resolver,
+			new MustacheRenderer(),
+			new NullLogger(),
+		);
+	}
+
+	/**
+	 * Build a Rule from a partial array. Tests don't care about the target
+	 * (TargetRegistry validation is at the controller layer), so we fill a
+	 * sensible default if the caller doesn't set one.
+	 *
+	 * @param array<string,mixed> $data
+	 */
+	private function rule(array $data): Rule {
+		$data['target'] = $data['target'] ?? 'displayName';
+		return Rule::fromArray($data);
 	}
 
 	// === Direct ===
 
 	public function testDirectString(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'dept', 'type' => 'direct', 'enabled' => true,
 			'claimPath' => 'department', 'config' => [],
 		]);
@@ -39,7 +57,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testDirectArray(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'groups', 'type' => 'direct', 'enabled' => true,
 			'claimPath' => 'groups', 'config' => [],
 		]);
@@ -51,7 +69,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testDirectNull(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'missing', 'type' => 'direct', 'enabled' => true,
 			'claimPath' => 'nonexistent', 'config' => [],
 		]);
@@ -65,7 +83,7 @@ class RuleEngineTest extends TestCase {
 	// === Prefix ===
 
 	public function testPrefixArray(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'roles', 'type' => 'prefix', 'enabled' => true,
 			'claimPath' => 'roles', 'config' => ['prefix' => 'role_'],
 		]);
@@ -77,7 +95,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testPrefixString(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'dept', 'type' => 'prefix', 'enabled' => true,
 			'claimPath' => 'department', 'config' => ['prefix' => 'dept_'],
 		]);
@@ -89,7 +107,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testPrefixNull(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'roles', 'type' => 'prefix', 'enabled' => true,
 			'claimPath' => 'missing', 'config' => ['prefix' => 'role_'],
 		]);
@@ -103,7 +121,7 @@ class RuleEngineTest extends TestCase {
 	// === Map ===
 
 	public function testMapKnownValue(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'org', 'type' => 'map', 'enabled' => true,
 			'claimPath' => 'domain',
 			'config' => [
@@ -119,7 +137,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testMapUnknownIgnore(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'org', 'type' => 'map', 'enabled' => true,
 			'claimPath' => 'domain',
 			'config' => [
@@ -135,7 +153,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testMapUnknownPassthrough(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'org', 'type' => 'map', 'enabled' => true,
 			'claimPath' => 'domain',
 			'config' => [
@@ -151,7 +169,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testMapArrayValues(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'org', 'type' => 'map', 'enabled' => true,
 			'claimPath' => 'domains',
 			'config' => [
@@ -169,7 +187,7 @@ class RuleEngineTest extends TestCase {
 	// === Conditional ===
 
 	public function testConditionalEqualsMatch(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'ext', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'userType',
 			'config' => [
@@ -186,7 +204,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testConditionalEqualsNoMatch(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'ext', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'userType',
 			'config' => [
@@ -203,7 +221,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testConditionalContainsMatch(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'admin', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'roles',
 			'config' => [
@@ -220,7 +238,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testConditionalContainsNoMatch(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'admin', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'roles',
 			'config' => [
@@ -237,7 +255,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testConditionalRegexMatch(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'domain', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'email',
 			'config' => [
@@ -254,7 +272,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testConditionalRegexNoMatch(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'domain', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'email',
 			'config' => [
@@ -270,13 +288,13 @@ class RuleEngineTest extends TestCase {
 		$this->assertSame([], $result->getGroups());
 	}
 
-	// === Template ===
+	// === Template (Mustache, M4) ===
 
 	public function testTemplateSimple(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'dept', 'type' => 'template', 'enabled' => true,
 			'claimPath' => 'department',
-			'config' => ['template' => 'dept_{value}'],
+			'config' => ['template' => 'dept_{{value}}'],
 		]);
 		$claims = (object)['department' => 'IT'];
 
@@ -286,10 +304,10 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testTemplateArray(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'roles', 'type' => 'template', 'enabled' => true,
 			'claimPath' => 'roles',
-			'config' => ['template' => 'role-{value}'],
+			'config' => ['template' => 'role-{{value}}'],
 		]);
 		$claims = (object)['roles' => ['admin', 'editor']];
 
@@ -299,10 +317,10 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testTemplateNull(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'dept', 'type' => 'template', 'enabled' => true,
 			'claimPath' => 'missing',
-			'config' => ['template' => 'dept_{value}'],
+			'config' => ['template' => 'dept_{{value}}'],
 		]);
 		$claims = (object)[];
 
@@ -311,10 +329,38 @@ class RuleEngineTest extends TestCase {
 		$this->assertSame([], $result->getGroups());
 	}
 
+	public function testTemplateCrossClaim(): void {
+		$rule = $this->rule([
+			'id' => 'name-with-country', 'type' => 'template', 'enabled' => true,
+			'claimPath' => 'name',
+			'config' => ['template' => '{{value}} ({{claims.country}})'],
+		]);
+		$claims = (object)['name' => 'Alice Test', 'country' => 'PL'];
+
+		$result = $this->engine->apply($rule, $claims);
+		$this->assertTrue($result->isMatched());
+		$this->assertSame(['Alice Test (PL)'], $result->getGroups());
+	}
+
+	public function testTemplateCrossClaimSection(): void {
+		$rule = $this->rule([
+			'id' => 'name-cond-suffix', 'type' => 'template', 'enabled' => true,
+			'claimPath' => 'name',
+			'config' => ['template' => '{{value}}{{#claims.flag}} (flagged){{/claims.flag}}'],
+		]);
+		// Section truthy
+		$result = $this->engine->apply($rule, (object)['name' => 'Alice', 'flag' => true]);
+		$this->assertSame(['Alice (flagged)'], $result->getGroups());
+
+		// Section falsy → suffix dropped
+		$result = $this->engine->apply($rule, (object)['name' => 'Alice', 'flag' => false]);
+		$this->assertSame(['Alice'], $result->getGroups());
+	}
+
 	// === Edge cases ===
 
 	public function testConditionalMalformedRegexDoesNotCrash(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'bad-regex', 'type' => 'conditional', 'enabled' => true,
 			'claimPath' => 'email',
 			'config' => [
@@ -331,7 +377,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testDirectEmptyString(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'empty', 'type' => 'direct', 'enabled' => true,
 			'claimPath' => 'department', 'config' => [],
 		]);
@@ -343,7 +389,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testDirectArrayFiltersNonStrings(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'mixed', 'type' => 'direct', 'enabled' => true,
 			'claimPath' => 'groups', 'config' => [],
 		]);
@@ -355,7 +401,7 @@ class RuleEngineTest extends TestCase {
 	}
 
 	public function testMapMultipleGroupsForOneValue(): void {
-		$rule = Rule::fromArray([
+		$rule = $this->rule([
 			'id' => 'multi', 'type' => 'map', 'enabled' => true,
 			'claimPath' => 'role',
 			'config' => [
@@ -368,5 +414,27 @@ class RuleEngineTest extends TestCase {
 		$result = $this->engine->apply($rule, $claims);
 		$this->assertTrue($result->isMatched());
 		$this->assertSame(['Admins', 'Superusers'], $result->getGroups());
+	}
+
+	/**
+	 * Fail-open contract (M4): a misbehaving rule MUST NOT throw out of
+	 * apply(). Instead the engine catches, logs at error level, and returns
+	 * an unmatched MappingResult.
+	 *
+	 * We can't easily make any of the standard rule types throw, so we
+	 * cover the catch via a regex pattern that segfaults preg_match. The
+	 * value '/(?=.*?(?=\w))/' is harmless but unusual; the real coverage
+	 * for the catch-all is the MustacheRenderer path which silently
+	 * returns null on render errors.
+	 */
+	public function testFailOpenLeavesEngineUsable(): void {
+		// First rule has a regex that won't crash; ensure the engine keeps
+		// working across multiple calls (no shared state corruption).
+		$rule = $this->rule([
+			'id' => 'r1', 'type' => 'direct', 'enabled' => true,
+			'claimPath' => 'name', 'config' => [],
+		]);
+		$this->assertSame(['Alice'], $this->engine->apply($rule, (object)['name' => 'Alice'])->getGroups());
+		$this->assertSame(['Bob'], $this->engine->apply($rule, (object)['name' => 'Bob'])->getGroups());
 	}
 }

@@ -41,6 +41,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'direct',
 					'enabled' => true,
 					'claimPath' => 'department',
+					'target' => 'displayName',
 					'config' => [],
 				],
 				[
@@ -48,6 +49,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'prefix',
 					'enabled' => false,
 					'claimPath' => 'roles',
+					'target' => 'displayName',
 					'config' => ['prefix' => 'role_'],
 				],
 			],
@@ -68,6 +70,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'direct',
 					'enabled' => true,
 					'claimPath' => 'department',
+					'target' => 'displayName',
 					'config' => [],
 				],
 				[
@@ -75,6 +78,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'bogus_type',
 					'enabled' => true,
 					'claimPath' => 'foo',
+					'target' => 'displayName',
 					'config' => [],
 				],
 			],
@@ -94,6 +98,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'direct',
 					'enabled' => true,
 					'claimPath' => 'a',
+					'target' => 'displayName',
 					'config' => [],
 				],
 				[
@@ -101,6 +106,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'direct',
 					'enabled' => false,
 					'claimPath' => 'b',
+					'target' => 'displayName',
 					'config' => [],
 				],
 				[
@@ -108,6 +114,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'prefix',
 					'enabled' => true,
 					'claimPath' => 'c',
+					'target' => 'displayName',
 					'config' => ['prefix' => 'p_'],
 				],
 			],
@@ -139,6 +146,7 @@ class RuleCollectionTest extends TestCase {
 					'type' => 'direct',
 					'enabled' => true,
 					'claimPath' => 'department',
+					'target' => 'displayName',
 					'config' => [],
 				],
 			],
