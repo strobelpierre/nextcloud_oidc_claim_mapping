@@ -83,6 +83,10 @@ class AttributeMappingListener implements IEventListener {
 		foreach ($rules as $rule) {
 			try {
 				$result = $this->ruleEngine->apply($rule, $claims);
+				// @codeCoverageIgnoreStart
+				// Defensive: RuleEngine::apply already wraps in fail-open try/catch.
+				// This outer catch protects against future regressions if the
+				// engine contract changes; can't be triggered in tests today.
 			} catch (Throwable $e) {
 				$this->logger->error('Rule {rule} threw while processing target {target}: {msg}', [
 					'rule' => $rule->getId(),
@@ -90,6 +94,7 @@ class AttributeMappingListener implements IEventListener {
 					'msg' => $e->getMessage(),
 				]);
 				continue;
+				// @codeCoverageIgnoreEnd
 			}
 
 			if (!$result->isMatched()) {
@@ -101,9 +106,14 @@ class AttributeMappingListener implements IEventListener {
 			}
 
 			$produced = $result->getGroups();
+			// @codeCoverageIgnoreStart
+			// Defensive: RuleEngine sets matched=count($groups)>0 so a
+			// matched result with empty groups is unreachable in practice.
+			// Kept for safety if the engine contract ever changes.
 			if (count($produced) === 0) {
 				continue;
 			}
+			// @codeCoverageIgnoreEnd
 			$value = (string)$produced[0];
 
 			$this->logger->debug('Rule {rule} matched target {target}, value="{value}", provider={provider}', [

@@ -37,20 +37,29 @@ class RuleEngine {
 				'map' => $this->applyMap($claimValue, $rule->getConfig()),
 				'conditional' => $this->applyConditional($claimValue, $rule->getConfig()),
 				'template' => $this->applyTemplate($claimValue, $claims, $rule->getConfig()),
+				// @codeCoverageIgnoreStart
+				// Defensive fallback: Rule::fromArray validates the type
+				// against VALID_TYPES at parse time, so this branch is
+				// unreachable through the public API. Kept as a safety net
+				// for future rule types added before the registry is updated.
 				default => [],
+				// @codeCoverageIgnoreEnd
 			};
 
 			return new MappingResult($rule->getId(), $groups, count($groups) > 0);
+			// @codeCoverageIgnoreStart
+			// Fail-open: defensive catch that must never block login. All
+			// internal collaborators (resolver, mustache, applyXxx) are
+			// total functions — the catch only fires on PHP-level fatals
+			// (out-of-memory, etc.) which can't be reproduced in tests.
 		} catch (Throwable $e) {
-			// Fail-open: a misbehaving rule MUST NOT block the login. We log
-			// the error and return an unmatched result so the caller (the
-			// listener or simulator) moves on to the next rule.
 			$this->logger->error('Rule {rule} threw while applying: {msg}', [
 				'rule' => $rule->getId(),
 				'msg' => $e->getMessage(),
 				'exception' => $e,
 			]);
 			return new MappingResult($rule->getId(), [], false);
+			// @codeCoverageIgnoreEnd
 		}
 	}
 

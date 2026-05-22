@@ -271,6 +271,41 @@ class RulesApiControllerTest extends TestCase {
 		self::assertSame(['users'], $data['existingGroups']);
 	}
 
+	public function testSimulateWithInvalidExistingJsonFallsBackToEmpty(): void {
+		$rulesJson = json_encode([
+			'version' => 1,
+			'mode' => 'additive',
+			'rules' => [
+				['id' => 'd', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'role', 'target' => 'displayName', 'config' => []],
+			],
+		]);
+		$this->appConfig->method('getValueString')->willReturn($rulesJson);
+
+		// "existing" is invalid JSON → controller falls back to [] before merging
+		$response = $this->controller->simulate('{"role":"admin"}', 'not-json');
+		$data = $response->getData();
+
+		self::assertSame(['admin'], $data['finalGroups']);
+	}
+
+	public function testSimulateReplaceModeWithMatchedRulesUsesProducedUnique(): void {
+		$rulesJson = json_encode([
+			'version' => 1,
+			'mode' => 'replace',
+			'rules' => [
+				['id' => 'd1', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'role', 'target' => 'displayName', 'config' => []],
+				['id' => 'd2', 'type' => 'direct', 'enabled' => true, 'claimPath' => 'role', 'target' => 'displayName', 'config' => []],
+			],
+		]);
+		$this->appConfig->method('getValueString')->willReturn($rulesJson);
+
+		// Both rules produce 'admin' → array_unique reduces to a single entry
+		$response = $this->controller->simulate('{"role":"admin"}', '["legacy"]');
+		$data = $response->getData();
+
+		self::assertSame(['admin'], $data['finalGroups']);
+	}
+
 	public function testSimulateReplaceModeNoMatch(): void {
 		$rulesJson = json_encode([
 			'version' => 1,

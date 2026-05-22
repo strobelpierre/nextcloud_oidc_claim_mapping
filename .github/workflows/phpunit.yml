@@ -23,10 +23,17 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
-          coverage: none
+          coverage: pcov
 
       - name: Install dependencies
         run: composer update --no-interaction --prefer-dist
 
-      - name: Run unit tests
-        run: composer test:unit
+      - name: Run unit tests with coverage
+        run: vendor/bin/phpunit -c tests/phpunit.xml --coverage-text --coverage-clover=coverage.xml
+
+      - name: Upload coverage artifact (PHP 8.3 only)
+        if: matrix.php == '8.3'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
