@@ -1,6 +1,6 @@
 {
 	"name": "oidc_claim_mapping",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"private": true,
 	"description": "OIDC Claim Mapping admin UI",
 	"license": "AGPL-3.0-or-later",

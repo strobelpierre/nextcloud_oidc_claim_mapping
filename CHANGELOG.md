@@ -7,6 +7,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.1] - 2026-05-22
+
+### Bug Fixes
+
+- **build**: ship Composer prod dependencies inside the appstore tarball. v0.1.0 failed at runtime with `Class "Mustache_Engine" not found` because `vendor/` was excluded from the package. `make appstore` now runs `composer install --no-dev --optimize-autoloader` inside the build directory and strips `.git`/`test`/`docs` folders from third-party packages before tarball creation.
+
 ## [0.1.0] - 2026-05-22
 
 First alpha release on the Nextcloud App Store.

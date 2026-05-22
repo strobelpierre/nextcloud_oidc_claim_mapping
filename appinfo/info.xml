@@ -26,7 +26,7 @@ installed and enabled.
 V1 targets only scalar user attributes (no groups). The group mapping path remains in
 the companion app oidc_groups_mapping. Future major versions may merge both surfaces.
     ]]></description>
-    <version>0.1.0</version>
+    <version>0.1.1</version>
     <licence>agpl</licence>
     <author>Pierre Strobel</author>
     <namespace>OidcClaimMapping</namespace>
