@@ -24,8 +24,8 @@ class TestMapping extends Command {
 	}
 
 	protected function configure(): void {
-		$this->setName('oidc-groups:test')
-			->setDescription('Test mapping rules against a sample token')
+		$this->setName('oidc-claim:test')
+			->setDescription('Test claim mapping rules against a sample token')
 			->addOption('token', 't', InputOption::VALUE_REQUIRED, 'JSON token claims')
 			->addOption('existing', 'e', InputOption::VALUE_OPTIONAL, 'JSON array of existing groups', '[]');
 	}

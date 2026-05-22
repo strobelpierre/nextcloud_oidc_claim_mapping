@@ -27,7 +27,7 @@ class SetRulesTest extends TestCase {
 	}
 
 	public function testConfigure(): void {
-		$this->assertSame('oidc-groups:set', $this->command->getName());
+		$this->assertSame('oidc-claim:set', $this->command->getName());
 		$this->assertStringContainsString('Set', $this->command->getDescription());
 
 		$definition = $this->command->getDefinition();

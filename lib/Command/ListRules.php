@@ -24,8 +24,8 @@ class ListRules extends Command {
 	}
 
 	protected function configure(): void {
-		$this->setName('oidc-groups:list')
-			->setDescription('List all configured OIDC group mapping rules');
+		$this->setName('oidc-claim:list')
+			->setDescription('List all configured OIDC claim mapping rules');
 	}
 
 	protected function execute(InputInterface $input, OutputInterface $output): int {

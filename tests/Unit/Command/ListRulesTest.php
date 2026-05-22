@@ -27,7 +27,7 @@ class ListRulesTest extends TestCase {
 	}
 
 	public function testConfigure(): void {
-		$this->assertSame('oidc-groups:list', $this->command->getName());
+		$this->assertSame('oidc-claim:list', $this->command->getName());
 		$this->assertStringContainsString('List', $this->command->getDescription());
 	}
 
