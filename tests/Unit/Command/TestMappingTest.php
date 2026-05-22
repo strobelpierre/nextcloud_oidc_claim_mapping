@@ -27,7 +27,7 @@ class TestMappingTest extends TestCase {
 	}
 
 	public function testConfigure(): void {
-		$this->assertSame('oidc-groups:test', $this->command->getName());
+		$this->assertSame('oidc-claim:test', $this->command->getName());
 		$this->assertStringContainsString('Test', $this->command->getDescription());
 
 		$definition = $this->command->getDefinition();

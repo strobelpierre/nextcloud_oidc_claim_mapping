@@ -25,8 +25,8 @@ class SetRules extends Command {
 	}
 
 	protected function configure(): void {
-		$this->setName('oidc-groups:set')
-			->setDescription('Set OIDC group mapping rules from JSON')
+		$this->setName('oidc-claim:set')
+			->setDescription('Set OIDC claim mapping rules from JSON')
 			->addArgument('json', InputArgument::REQUIRED, 'JSON configuration string');
 	}
 

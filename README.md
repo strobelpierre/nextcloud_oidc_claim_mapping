@@ -24,8 +24,6 @@ A Nextcloud app that maps OIDC token claims to **scalar Nextcloud user attribute
 > - **V2** — DB-backed `RuleStorage` (replaces the `IAppConfig` blob), audit trail with a dedicated table, history of rule changes.
 > - **V3** — re-merge the group mapping path so this app fully replaces `oidc_groups_mapping`. Long-term, `oidc_groups_mapping` will be deprecated in favor of `oidc_claim_mapping`.
 
-![How it works](docs/flow-diagram.svg)
-
 ## Features
 
 - **Vue admin UI** — visual rule editor with 3 tabs (Visual Editor, JSON, Simulator)
@@ -136,7 +134,7 @@ In **V3** of this app, the group mapping path will be re-merged so `oidc_claim_m
 php occ app:install oidc_claim_mapping
 
 # Configure rules
-php occ oidc-groups:set '{
+php occ oidc-claim:set '{
   "version": 1,
   "mode": "additive",
   "rules": [
@@ -146,7 +144,7 @@ php occ oidc-groups:set '{
 }'
 
 # Test with a sample token
-php occ oidc-groups:test --token '{"department":"Engineering","roles":["admin","editor"]}'
+php occ oidc-claim:test --token '{"department":"Engineering","roles":["admin","editor"]}'
 ```
 
 ## Rule types
@@ -305,16 +303,16 @@ Rules can be managed programmatically via OCS REST endpoints:
 
 ```bash
 # List configured rules
-php occ oidc-groups:list
+php occ oidc-claim:list
 
 # Set rules from JSON
-php occ oidc-groups:set '{"version":1,"mode":"additive","rules":[...]}'
+php occ oidc-claim:set '{"version":1,"mode":"additive","rules":[...]}'
 
 # Test rules against a sample token
-php occ oidc-groups:test --token '{"department":"IT","roles":["admin","editor"]}'
+php occ oidc-claim:test --token '{"department":"IT","roles":["admin","editor"]}'
 
 # Test with existing groups (to see merge behavior)
-php occ oidc-groups:test --token '{"department":"IT"}' --existing '["users"]'
+php occ oidc-claim:test --token '{"department":"IT"}' --existing '["users"]'
 ```
 
 ## How it works
@@ -405,13 +403,13 @@ make appstore
 ### Groups not being mapped
 
 - Ensure `user_oidc` is installed and enabled
-- Verify claim paths match your IdP token structure using `php occ oidc-groups:test`
+- Verify claim paths match your IdP token structure using `php occ oidc-claim:test`
 - Check Nextcloud logs for `oidc_claim_mapping` messages
 
 ### Rules not applying
 
 - Verify rules are enabled (`"enabled": true`)
-- Ensure the JSON is valid via the admin settings UI or `php occ oidc-groups:list`
+- Ensure the JSON is valid via the admin settings UI or `php occ oidc-claim:list`
 - For conditional rules with `regex` operator, ensure the regex pattern is valid (including delimiters)
 
 ## Roadmap
