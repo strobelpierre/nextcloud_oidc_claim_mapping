@@ -42,6 +42,64 @@ class RuleEngineTest extends TestCase {
 		return Rule::fromArray($data);
 	}
 
+	// === Coverage fillers for branches reachable via crafted inputs ===
+
+	public function testMapSkipsNonStringValuesInArray(): void {
+		$rule = $this->rule([
+			'id' => 'm', 'type' => 'map', 'enabled' => true,
+			'claimPath' => 'roles',
+			'config' => ['values' => ['admin' => 'g-admin']],
+		]);
+		// Non-string entries (int, bool, null) must be skipped silently
+		$claims = (object)['roles' => ['admin', 123, true, null]];
+
+		$result = $this->engine->apply($rule, $claims);
+		$this->assertSame(['g-admin'], $result->getGroups());
+	}
+
+	public function testConditionalUnknownOperatorReturnsEmpty(): void {
+		$rule = $this->rule([
+			'id' => 'c', 'type' => 'conditional', 'enabled' => true,
+			'claimPath' => 'dept',
+			'config' => [
+				'operator' => 'unknown-op',
+				'value' => 'IT',
+				'groups' => ['g-it'],
+			],
+		]);
+		$claims = (object)['dept' => 'IT'];
+
+		$result = $this->engine->apply($rule, $claims);
+		$this->assertFalse($result->isMatched());
+		$this->assertSame([], $result->getGroups());
+	}
+
+	public function testTemplateEmptyTemplateReturnsEmpty(): void {
+		$rule = $this->rule([
+			'id' => 't', 'type' => 'template', 'enabled' => true,
+			'claimPath' => 'name',
+			'config' => ['template' => ''],
+		]);
+		$claims = (object)['name' => 'Alice'];
+
+		$result = $this->engine->apply($rule, $claims);
+		$this->assertFalse($result->isMatched());
+		$this->assertSame([], $result->getGroups());
+	}
+
+	public function testTemplateSkipsNonStringEntriesInArrayValue(): void {
+		$rule = $this->rule([
+			'id' => 't', 'type' => 'template', 'enabled' => true,
+			'claimPath' => 'names',
+			'config' => ['template' => '{{value}}'],
+		]);
+		// Array with mixed types — only 'Alice' should produce output
+		$claims = (object)['names' => ['Alice', 42, '', null, 'Bob']];
+
+		$result = $this->engine->apply($rule, $claims);
+		$this->assertSame(['Alice', 'Bob'], $result->getGroups());
+	}
+
 	// === Direct ===
 
 	public function testDirectString(): void {

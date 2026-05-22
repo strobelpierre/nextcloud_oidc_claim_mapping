@@ -14,6 +14,30 @@ use PHPUnit\Framework\TestCase;
 
 class RuleTest extends TestCase {
 
+	public function testEmptyProviderIdentifierThrows(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('providerIdentifier');
+		Rule::fromArray([
+			'id' => 'r',
+			'type' => 'direct',
+			'claimPath' => 'name',
+			'target' => 'displayName',
+			'providerIdentifier' => '',
+		]);
+	}
+
+	public function testNonStringProviderIdentifierThrows(): void {
+		$this->expectException(\InvalidArgumentException::class);
+		$this->expectExceptionMessage('providerIdentifier');
+		Rule::fromArray([
+			'id' => 'r',
+			'type' => 'direct',
+			'claimPath' => 'name',
+			'target' => 'displayName',
+			'providerIdentifier' => 42,
+		]);
+	}
+
 	public function testConstructValidDirect(): void {
 		$rule = Rule::fromArray([
 			'id' => 'test-rule',

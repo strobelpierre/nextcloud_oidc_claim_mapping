@@ -73,6 +73,24 @@ class ProviderResolverTest extends TestCase {
 		$this->assertSame('good', $resolver->resolveByIss('https://idp.example.com/realms/prod'));
 	}
 
+	public function testIssWithoutPathFallsBackToRoot(): void {
+		// iss without a path component → resolver normalizes the iss path to '/'
+		// and only matches a provider whose discovery sits at the root.
+		$resolver = $this->makeResolver([
+			$this->provider('root', 'https://idp.example.com/.well-known/openid-configuration'),
+		]);
+		$this->assertSame('root', $resolver->resolveByIss('https://idp.example.com'));
+	}
+
+	public function testSkipsProviderWithDiscoveryHavingNoPath(): void {
+		// Discovery URL without a path component (just scheme + host) is skipped.
+		$resolver = $this->makeResolver([
+			$this->provider('no-path', 'https://idp.example.com'),
+			$this->provider('ok', 'https://idp.example.com/realms/prod/.well-known/openid-configuration'),
+		]);
+		$this->assertSame('ok', $resolver->resolveByIss('https://idp.example.com/realms/prod'));
+	}
+
 	public function testGracefulOnMapperException(): void {
 		$mapper = $this->createMock(ProviderMapper::class);
 		$mapper->method('getProviders')->willThrowException(new \RuntimeException('DB down'));

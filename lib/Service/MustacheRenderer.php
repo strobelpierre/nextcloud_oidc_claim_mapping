@@ -57,8 +57,14 @@ class MustacheRenderer {
 				'claims' => $claims,
 			];
 			return $this->engine->render($template, $context);
+			// @codeCoverageIgnoreStart
+			// Defensive: Mustache_Engine::render is total for well-formed
+			// templates (validation happens at save via validate()). This
+			// catch covers runtime engine-level failures that can't be
+			// reproduced once validate() has gated invalid inputs upstream.
 		} catch (Throwable) {
 			return null;
+			// @codeCoverageIgnoreEnd
 		}
 	}
 

@@ -165,6 +165,56 @@ class AttributeMappingListenerTest extends TestCase {
 		$this->assertSame('FIRST Alice', $event->getValue());
 	}
 
+	public function testNoMatchingRuleLeavesEventAlone(): void {
+		// Rule targets displayName but its conditional won't match this token.
+		$rules = $this->rules([
+			[
+				'id' => 'cond-no-match',
+				'type' => 'conditional',
+				'enabled' => true,
+				'claimPath' => 'role',
+				'target' => 'displayName',
+				'config' => [
+					'operator' => 'equals',
+					'value' => 'admin',
+					'groups' => ['G'],
+				],
+			],
+		]);
+		$this->appConfig->method('getValueString')->willReturn($rules);
+
+		$event = new AttributeMappedEvent('mappingDisplayName', (object)['role' => 'user']);
+		$this->listener->handle($event);
+
+		$this->assertNull($event->getValue());
+		$this->assertFalse($event->isPropagationStopped());
+	}
+
+	public function testRuleProducingEmptyGroupsIsSkipped(): void {
+		// Direct rule on a claim that contains only filtered values
+		// (non-string array entries) → produced groups is empty → continue.
+		$rules = $this->rules([
+			[
+				'id' => 'empty-producer',
+				'type' => 'direct',
+				'enabled' => true,
+				'claimPath' => 'roles',
+				'target' => 'displayName',
+				'config' => [],
+			],
+		]);
+		$this->appConfig->method('getValueString')->willReturn($rules);
+
+		$event = new AttributeMappedEvent(
+			'mappingDisplayName',
+			(object)['roles' => [123, true, null]],
+		);
+		$this->listener->handle($event);
+
+		$this->assertNull($event->getValue());
+		$this->assertFalse($event->isPropagationStopped());
+	}
+
 	public function testWildcardRuleAppliesWhenProviderResolverFails(): void {
 		// No provider known to the mapper → resolver returns null → wildcard rules apply
 		$rules = $this->rules([

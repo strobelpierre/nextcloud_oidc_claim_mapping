@@ -149,6 +149,13 @@ class ClaimResolverTest extends TestCase {
 		));
 	}
 
+	public function testTrailingDotReturnsParentValue(): void {
+		// Path with a trailing dot: head="foo", tail="" → the recursion short
+		// path kicks in and returns the parent value directly.
+		$claims = (object)['foo' => 'bar'];
+		$this->assertSame('bar', $this->resolver->resolve($claims, 'foo.'));
+	}
+
 	public function testFullNamespacedToken(): void {
 		// Simulate an IdP token with URL-namespaced claims and nested dot-key objects
 		$claims = (object)[

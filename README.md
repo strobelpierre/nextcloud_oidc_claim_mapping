@@ -41,6 +41,7 @@ A Nextcloud app that maps OIDC token claims to **scalar Nextcloud user attribute
 ## Table of contents
 
 - [The problem](#the-problem)
+- [Companion app: oidc_groups_mapping](#companion-app-oidc_groups_mapping)
 - [Quick start](#quick-start)
 - [Rule types](#rule-types)
 - [Configuration](#configuration)
@@ -61,25 +62,66 @@ Your identity provider sends a JWT token like this:
 ```json
 {
   "sub": "jdoe",
-  "email": "jdoe@example.com",
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com",
+  "country": "US",
   "department": "Engineering",
-  "roles": ["admin", "editor"],
-  "organization": "corp.example.com",
   "userType": "INTERNAL"
 }
 ```
 
-With `user_oidc` alone, you can map **one** claim to groups (`mappingGroups`). But what if you need groups from `department`, `roles`, `organization`, and `userType` all at once?
+With `user_oidc` alone, you can map each claim to a single scalar attribute (display name, email, quota, etc.) — one claim, one value, no transformation. There is no way to combine claims, apply conditions, or pick different mappings per identity provider.
 
-**This app solves that.** Configure rules to map any number of claims to Nextcloud groups:
+But what if you need:
+
+- A **display name combining multiple claims**, like `Jane Doe (US)` so users from different regions are easy to tell apart?
+- A **conditional quota** that depends on `userType` (e.g. 50 GB for `INTERNAL`, 5 GB for `EXTERNAL`)?
+- An **email computed from a custom claim path** nested several levels deep?
+- A **different mapping per identity provider** (one rule for IdP A, another for IdP B), matched by the `iss` claim?
+
+**This app solves that.** Configure rules to compute any scalar user attribute from any combination of OIDC claims:
 
 | Without this app | With this app |
 |:---|:---|
-| 1 claim &rarr; groups | **N claims** &rarr; groups via configurable rules |
-| `roles` &rarr; `["admin", "editor"]` | `department` &rarr; `Engineering` |
-| | `roles` &rarr; `role_admin`, `role_editor` |
-| | `organization` &rarr; `Staff` (via lookup table) |
-| | `userType == INTERNAL` &rarr; `Internal-Users` |
+| `name` &rarr; display name | `{{name}} ({{claims.country}})` &rarr; display name with country suffix |
+| `quota_bytes` &rarr; quota | `userType == "INTERNAL" ? "50 GB" : "5 GB"` &rarr; conditional quota |
+| `email` &rarr; email | `claims.user.contact.primaryEmail` &rarr; email from deep claim path |
+| One mapping per attribute, global | Per-provider rules via `iss` matching, first-match-wins |
+
+## Companion app: oidc_groups_mapping
+
+`oidc_claim_mapping` works **alongside** [`oidc_groups_mapping`](https://github.com/strobelpierre/nextcloud_oidc_groups_mapping), the sister app that handles **group memberships**. The two apps cover complementary parts of the OIDC mapping surface and are designed to run side by side.
+
+|  | `oidc_claim_mapping` (this app) | `oidc_groups_mapping` |
+|:---|:---|:---|
+| **Targets** | Scalar user attributes (displayName, email, quota, country, language, …) | Group memberships |
+| **`user_oidc` hook** | `AttributeMappedEvent` | Group provisioning path |
+| **Typical use cases** | Display name formatting, conditional quota, country suffix, custom email derivation | Map claim values to NC groups (e.g. `roles=["admin"]` &rarr; group `admins`) |
+| **Rule engine** | Shared core: rule engine, claim resolver, Mustache renderer (full template support), `iss`-based per-provider scoping |
+| **App ID** | `oidc_claim_mapping` | `oidc_groups_mapping` |
+
+### When to install which app
+
+- You need to **format or transform user attributes** (display name, email, quota, language, etc.) &rarr; install **`oidc_claim_mapping`**.
+- You need to **assign group memberships** from token claims &rarr; install **`oidc_groups_mapping`**.
+- You need **both** &rarr; install both apps side by side. They are fully independent.
+
+### Can I run both at the same time?
+
+Yes — and that is the supported setup until V3. Both apps register listeners on different `user_oidc` events. Their rule storage is isolated (different `IAppConfig` keys, different schema namespace), so a rule defined in one app is invisible to the other. The shared frontend skeleton is namespaced under each app id so the two admin sections don't collide.
+
+### Migration path for oidc_groups_mapping users
+
+If you already use `oidc_groups_mapping` and want to start mapping scalar attributes too:
+
+1. Install `oidc_claim_mapping` from the App Store (no change required on `oidc_groups_mapping`).
+2. Keep your existing `oidc_groups_mapping` rules — they continue to handle groups.
+3. Add new rules in the `oidc_claim_mapping` admin UI for the scalar attributes you need.
+4. Both apps run independently. No conflict, no data migration needed.
+
+### Long-term roadmap
+
+In **V3** of this app, the group mapping path will be re-merged so `oidc_claim_mapping` fully replaces `oidc_groups_mapping`. At that point, `oidc_groups_mapping` will be deprecated and a migration helper will guide users to move their group rules into `oidc_claim_mapping`. Until V3 ships, the two-app setup is the recommended architecture.
 
 ## Requirements
 

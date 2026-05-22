@@ -7,6 +7,37 @@
 
 All notable changes to this project are documented in this file.
 
+## [0.1.0] - 2026-05-22
+
+First alpha release on the Nextcloud App Store.
+
+### Highlights
+
+- Maps OIDC token claims to scalar Nextcloud user attributes (display name, email, quota, country, etc.) via configurable rules — hooks into `user_oidc` `AttributeMappedEvent`.
+- 5 rule types: direct, prefix, map, conditional, template (full Mustache support with cross-claim and sections).
+- Per-provider scoping via `iss`-based provider matching with wildcard fallback.
+- Vue 3 admin UI: target dropdown, provider dropdown, accordion grouping by target, claim simulator, drag-and-drop reorder.
+- REST API (OCS endpoints) for programmatic rule management.
+- 3 OCC commands: list / set / test rules.
+- Dark mode support.
+
+### Quality
+
+- **100% line and method coverage** (459/459 lines, 73/73 methods, 17/17 classes) measured via PCOV. A handful of defensive `catch (Throwable)` blocks and unreachable defensive branches (e.g. `match` default arms gated by upstream validation) are marked `@codeCoverageIgnore` with inline justification — they are documented fail-open safety nets that cannot be triggered through the public API.
+- 166+ phpunit tests, 376+ assertions, all green on PHP 8.1 / 8.2 / 8.3 (GitHub Actions matrix).
+- Psalm strict: 0 errors.
+- REUSE compliance: all source files carry SPDX headers, `.reuse/dep5` declared.
+
+### Companion app
+
+- Designed to run side by side with [`oidc_groups_mapping`](https://github.com/strobelpierre/nextcloud_oidc_groups_mapping). Scalar attributes (this app) and group memberships (sister app) live in separate `IAppConfig` namespaces and listen on different `user_oidc` events. See the README "Companion app" section for the recommended setup.
+
+### Compatibility
+
+- Nextcloud server 29 — 32
+- PHP 8.1+
+- `user_oidc` app installed and enabled
+
 ## [Unreleased]
 
 ### Added

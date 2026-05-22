@@ -77,13 +77,23 @@ class ClaimResolver {
 		if (is_object($current)) {
 			return property_exists($current, $key);
 		}
+		// @codeCoverageIgnoreStart
+		// Defensive: helper accepts arrays for future-proofing, but resolve()
+		// only ever passes objects (the recursion in line 51 guards with
+		// is_object). Array branch covered by direct reflection in tests
+		// would add brittle indirection without real benefit.
 		return array_key_exists($key, $current);
+		// @codeCoverageIgnoreEnd
 	}
 
 	private function getProperty(object|array $current, string $key): mixed {
 		if (is_object($current)) {
 			return $current->$key;
 		}
+		// @codeCoverageIgnoreStart
+		// Defensive: see hasProperty() above — array branch unreachable
+		// through the public API.
 		return $current[$key];
+		// @codeCoverageIgnoreEnd
 	}
 }
